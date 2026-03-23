@@ -49,14 +49,14 @@ class DefectReport(models.Model):
 
 class Comment(models.Model):
   defect = models.ForeignKey(DefectReport, on_delete=models.CASCADE, related_name='comments')
-  author = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+  author = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='comment_authored')
   comment_id = models.CharField(max_length=10)
   text = models.TextField()
   created_at = models.DateTimeField(auto_now_add=True)
 
 class Email(models.Model):
   defect = models.ForeignKey(DefectReport, on_delete=models.CASCADE, related_name='emails')
-  author = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+  author = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='email_sent')
   email_id = models.CharField(max_length=10)
   subject = models.CharField(max_length=200)
   body = models.TextField()
