@@ -30,19 +30,34 @@ class DefectReport(models.Model):
     LOW      = 'Low',      'Low'
 
   product = models.ForeignKey(Product, on_delete=models.CASCADE)
-  defectId = models.CharField(max_length=10)
-  productVersion = models.CharField(max_length=50)
+  defect_id = models.CharField(max_length=10)
+  product_version = models.CharField(max_length=50)
   title = models.CharField(max_length=200)
   description = models.TextField()
-  stepsToReproduce = models.TextField()
-  testerId = models.CharField(max_length=10)
-  testerEmail = models.EmailField(blank=True, null=True)
-  submissionDate = models.DateTimeField(auto_now_add=True)
+  steps_to_reproduce = models.TextField()
+  tester_id = models.CharField(max_length=10)
+  tester_email = models.EmailField(blank=True, null=True)
+  submission_date = models.DateTimeField(auto_now_add=True)
   status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
   severity = models.CharField(max_length=20, choices=Severity.choices, blank=True)
   priority = models.CharField(max_length=20, choices=Priority.choices, blank=True)
-  assignedDeveloper = models.ForeignKey(
+  assigned_developer = models.ForeignKey(
     User, null=True, blank=True,
     on_delete=models.SET_NULL,
     related_name='assignedDefect'
   )
+
+class Comment(models.Model):
+  defect = models.ForeignKey(DefectReport, on_delete=models.CASCADE, related_name='comments')
+  author = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+  comment_id = models.CharField(max_length=10)
+  text = models.TextField()
+  created_at = models.DateTimeField(auto_now_add=True)
+
+class Email(models.Model):
+  defect = models.ForeignKey(DefectReport, on_delete=models.CASCADE, related_name='emails')
+  author = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+  email_id = models.CharField(max_length=10)
+  subject = models.CharField(max_length=200)
+  body = models.TextField()
+  date_sent = models.DateTimeField(auto_now_add=True)
