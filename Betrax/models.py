@@ -56,6 +56,9 @@ class DefectReport(models.Model):
     related_name='duplicates'
   )
 
+  def __str__(self):
+    return f"[{self.status}] {self.title}"
+
   def clean(self):
     from django.core.exceptions import ValidationError
     if self.status == self.Status.DUPLICATE and self.duplicate_of is None:
