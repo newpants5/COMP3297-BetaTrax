@@ -1,10 +1,11 @@
 from rest_framework import serializers
+from django.contrib.auth.models import User
 from .models import DefectReport
 
 class DefectListSerializer(serializers.ModelSerializer):
     class Meta:
         model = DefectReport
-        fields = ["id", "title", "status", "submission_date", "tester_id"]
+        fields = ["id", "title", "status", "submission_date", "tester_id", "assigned_developer"]
 
 class DefectDetailSerializer(serializers.ModelSerializer):
     class Meta:
@@ -14,3 +15,11 @@ class DefectDetailSerializer(serializers.ModelSerializer):
 class DefectAcceptSerializer(serializers.Serializer):
     severity = serializers.ChoiceField(choices=DefectReport.Severity.choices)
     priority = serializers.ChoiceField(choices=DefectReport.Priority.choices)
+
+class DefectAssignSerializer(serializers.Serializer):
+    developer_id = serializers.IntegerField()
+
+    def validate_developer_id(self, value):
+        if not User.objects.filter(pk=value).exists():
+            raise serializers.ValidationError("Developer not found.")
+        return value
