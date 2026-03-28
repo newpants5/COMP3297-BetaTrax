@@ -13,9 +13,13 @@ class DefectReport(models.Model):
   class Status(models.TextChoices):
     NEW = 'New', 'New'
     OPEN = 'Open', 'Open'
+    REJECTED = 'Rejected', 'Rejected'
+    DUPLICATE = 'Duplicate', 'Duplicate'
     ASSIGNED = 'Assigned', 'Assigned'
     FIXED    = 'Fixed',    'Fixed'
+    REOPENED   = 'Reopened',  'Reopened'
     RESOLVED = 'Resolved', 'Resolved'
+
 
   class Severity(models.TextChoices):
     CRITICAL = 'Critical', 'Critical'
@@ -46,7 +50,19 @@ class DefectReport(models.Model):
     on_delete=models.SET_NULL,
     related_name='assignedDefect'
   )
+  duplicate_of = models.ForeignKey(
+    'self', null=True, blank=True,
+    on_delete=models.SET_NULL,
+    related_name='duplicates'
+  )
 
+  def clean(self):
+    from django.core.exceptions import ValidationError
+    if self.status == self.Status.DUPLICATE and self.duplicate_of is None:
+      raise ValidationError("duplicateOf must be set when status is DUPLICATE")
+    if self.duplicate_of is not None and self.duplicate_of == self:
+      raise ValidationError("A defect report cannot be a duplicate of itself.")
+    
 class Comment(models.Model):
   defect = models.ForeignKey(DefectReport, on_delete=models.CASCADE, related_name='comments')
   author = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='comment_authored')
