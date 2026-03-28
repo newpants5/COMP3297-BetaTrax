@@ -6,11 +6,25 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import User
+from django.core.mail import send_mail
 
 from .models import DefectReport
 from .serializers import DefectListSerializer, DefectDetailSerializer, DefectAcceptSerializer, DefectAssignSerializer
 
 from rest_framework import generics
+
+def send_status_notification(defect, old_status):
+    if not defect.tester_email:
+        return
+
+    subject = f"BetaTrax: Defect #{defect.id} status changed to {defect.status}"
+    body = (
+        f"Hello,\n\n"
+        f"The status of defect \"{defect.title}\" (ID: {defect.id}) "
+        f"has changed from {old_status} to {defect.status}.\n\n"
+        f"— BetaTrax"
+    )
+    send_mail(subject, body, None, [defect.tester_email])
 
 class DefectListView(generics.ListAPIView):
     serializer_class = DefectListSerializer
@@ -39,10 +53,13 @@ class AcceptDefectView(APIView):
         serializer = DefectAcceptSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        old_status = defect.status
         defect.severity = serializer.validated_data["severity"]
         defect.priority = serializer.validated_data["priority"]
         defect.status = DefectReport.Status.OPEN
         defect.save()
+
+        send_status_notification(defect, old_status)
 
         return Response({
             "id": defect.id,
@@ -65,10 +82,13 @@ class AssignDefectView(APIView):
         serializer = DefectAssignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        old_status = defect.status
         developer = get_object_or_404(User, pk=serializer.validated_data["developer_id"])
         defect.assigned_developer = developer
         defect.status = DefectReport.Status.ASSIGNED
         defect.save()
+
+        send_status_notification(defect, old_status)
 
         return Response({
             "id": defect.id,
@@ -87,8 +107,11 @@ class FixDefectView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        old_status = defect.status
         defect.status = DefectReport.Status.FIXED
         defect.save()
+
+        send_status_notification(defect, old_status)
 
         return Response({
             "id": defect.id,

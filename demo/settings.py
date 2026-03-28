@@ -71,6 +71,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'demo.wsgi.application'
 
+# Email Handling
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend' # Sending to console as per req.
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = 'your@email.com'
+EMAIL_HOST_PASSWORD = 'PASSWORD'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
