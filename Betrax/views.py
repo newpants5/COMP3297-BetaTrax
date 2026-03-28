@@ -117,3 +117,24 @@ class FixDefectView(APIView):
             "id": defect.id,
             "status": defect.status
         })
+
+class ResolveDefectView(APIView):
+    def patch(self, request, pk):
+        defect = get_object_or_404(DefectReport, pk=pk)
+
+        if defect.status != DefectReport.Status.FIXED:
+            return Response(
+                {"error": "Only FIXED defects can be marked as Resolved"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        old_status = defect.status
+        defect.status = DefectReport.Status.RESOLVED
+        defect.save()
+
+        send_status_notification(defect, old_status)
+
+        return Response({
+            "id": defect.id,
+            "status": defect.status,
+        })
