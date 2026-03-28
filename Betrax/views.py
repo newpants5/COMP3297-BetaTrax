@@ -12,8 +12,7 @@ from .serializers import DefectListSerializer, DefectDetailSerializer, DefectAcc
 
 from rest_framework import generics
 
-class DefectListView(generics.ListAPIView):
-    serializer_class = DefectListSerializer
+class DefectListView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = DefectReport.objects.all()
@@ -21,6 +20,11 @@ class DefectListView(generics.ListAPIView):
         if status_value:
             queryset = queryset.filter(status=status_value)
         return queryset
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return DefectDetailSerializer
+        return DefectListSerializer
     
 class DefectDetailView(generics.RetrieveAPIView):
     queryset = DefectReport.objects.all()
