@@ -4,7 +4,7 @@ COMP3297 Group B Project - BetaTrax Implementation
 
 ## API Design
 
-### Product Owner:
+### Product Owner - Updated to include token:
 
 PATCH /api/defects/\<pk\>/accept/
 
@@ -12,19 +12,23 @@ PATCH /api/defects/\<pk\>/accept/
 
 ```powershell
 Invoke-RestMethod -Method PATCH -Uri "http://127.0.0.1:8000/api/defects/1/accept/" `
-  -Headers @{"Content-Type"="application/json"} `
+  -Headers @{
+    "Content-Type"="application/json";
+    "Authorization"="Token 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b"
+  } `
   -Body '{"severity": "Major", "priority": "High"}'
 ```
 
-**Linux/macOS (bash):**
+**Linux/macOS (bash)**
 
 ```bash
 curl -X PATCH http://127.0.0.1:8000/api/defects/1/accept/ \
   -H "Content-Type: application/json" \
+  -H "Authorization: Token 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b" \
   -d '{"severity": "Major", "priority": "High"}'
 ```
 
-### Developer:
+### Developer - Updated to include token:
 
 GET /api/defects/?status=Open
 
@@ -38,7 +42,10 @@ PATCH /api/defects/\<pk\>/assign/
 
 ```powershell
 Invoke-RestMethod -Method PATCH -Uri "http://127.0.0.1:8000/api/defects/1/assign/" `
-  -Headers @{"Content-Type"="application/json"} `
+  -Headers @{
+    "Content-Type"="application/json";
+    "Authorization"="Token [token-code]"
+  } `
   -Body '{"developer_id": 1}'
 ```
 
@@ -47,6 +54,7 @@ Invoke-RestMethod -Method PATCH -Uri "http://127.0.0.1:8000/api/defects/1/assign
 ```bash
 curl -X PATCH http://127.0.0.1:8000/api/defects/1/assign/ \
   -H "Content-Type: application/json" \
+  -H "Authorization: Token [token-code]" \
   -d '{"developer_id": 1}'
 ```
 
@@ -56,7 +64,10 @@ PATCH /api/defects/\<pk\>/fix/
 
 ```powershell
 Invoke-RestMethod -Method PATCH -Uri "http://127.0.0.1:8000/api/defects/1/fix/" `
-  -Headers @{"Content-Type"="application/json"} `
+  -Headers @{
+    "Content-Type"="application/json";
+    "Authorization"="Token [token-code]"
+  } `
   -Body '{}'
 ```
 
@@ -65,12 +76,13 @@ Invoke-RestMethod -Method PATCH -Uri "http://127.0.0.1:8000/api/defects/1/fix/" 
 ```bash
 curl -X PATCH http://127.0.0.1:8000/api/defects/1/fix/ \
   -H "Content-Type: application/json" \
+  -H "Authorization: Token [token-code]" \
   -d '{}'
 ```
 
 ![](images/fixed_defect.png)
 
-## User Authentication (Using Tokens)
+## User Authentication (Through Tokens)
 
 ### Retrieving a token
 

@@ -12,6 +12,7 @@ from .models import DefectReport
 from .serializers import DefectListSerializer, DefectDetailSerializer, DefectAcceptSerializer, DefectAssignSerializer
 
 from rest_framework import generics
+from .permissions import IsProductOwner, IsDeveloper, IsBetaTester
 
 def send_status_notification(defect, old_status):
     if not defect.tester_email:
@@ -39,12 +40,19 @@ class DefectListView(generics.ListCreateAPIView):
         if self.request.method == 'POST':
             return DefectDetailSerializer
         return DefectListSerializer
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsBetaTester()]
+        return super().get_permissions()
     
 class DefectDetailView(generics.RetrieveAPIView):
     queryset = DefectReport.objects.all()
     serializer_class = DefectDetailSerializer
 
 class AcceptDefectView(APIView):
+    permission_classes = [IsProductOwner]
+
     def patch(self, request, pk):
         defect = get_object_or_404(DefectReport, pk=pk)
 
@@ -74,6 +82,8 @@ class AcceptDefectView(APIView):
 
 
 class AssignDefectView(APIView):
+    permission_classes = [IsProductOwner]
+
     def patch(self, request, pk):
         defect = get_object_or_404(DefectReport, pk=pk)
 
@@ -102,6 +112,8 @@ class AssignDefectView(APIView):
 
 
 class FixDefectView(APIView):
+    permission_classes = [IsDeveloper]
+
     def patch(self, request, pk):
         defect = get_object_or_404(DefectReport, pk=pk)
 
@@ -123,6 +135,8 @@ class FixDefectView(APIView):
         })
 
 class ResolveDefectView(APIView):
+    permission_classes = [IsProductOwner]
+
     def patch(self, request, pk):
         defect = get_object_or_404(DefectReport, pk=pk)
 
