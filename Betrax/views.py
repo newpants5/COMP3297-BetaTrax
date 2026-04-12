@@ -14,6 +14,7 @@ from .serializers import (
     DefectDetailSerializer, 
     DefectAcceptSerializer, 
     DefectAssignSerializer,
+    DefectDuplicateSerializer,
     ProductSerializer 
 )
 
@@ -200,7 +201,7 @@ class RejectDefectView(APIView):
         })
 
 class ReopenDefectView(APIView):
-    permission_classes = [IsProductOwner]
+    permission_classes = [IsProductOwner | IsDeveloper]
 
     def patch(self, request, pk):
         defect = get_object_or_404(DefectReport, pk=pk)
@@ -213,6 +214,7 @@ class ReopenDefectView(APIView):
 
         old_status = defect.status
         defect.status = DefectReport.Status.REOPENED
+        defect.assigned_developer = None
         defect.save()
 
         send_status_notification(defect, old_status)
@@ -220,6 +222,7 @@ class ReopenDefectView(APIView):
         return Response({
             "id": defect.id,
             "status": defect.status,
+            "assigned_developer": None
         })
 
 class ReassignDefectView(APIView):
@@ -238,7 +241,7 @@ class ReassignDefectView(APIView):
         serializer.is_valid(raise_exception=True)
 
         old_status = defect.status
-        developer = get_object_or_404(User, pk=serializer.validated_data["developer_id"])
+        developer = get_object_or_404(Developer, pk=serializer.validated_data["developer_id"])
         defect.assigned_developer = developer
         defect.status = DefectReport.Status.ASSIGNED
         defect.save()
@@ -248,7 +251,67 @@ class ReassignDefectView(APIView):
         return Response({
             "id": defect.id,
             "status": defect.status,
-            "assigned_developer": defect.assigned_developer.username
+            "assigned_developer": defect.assigned_developer.id
+        })
+
+class DuplicateDefectView(APIView):
+    permission_classes = [IsProductOwner]
+
+    def patch(self, request, pk):
+        defect = get_object_or_404(DefectReport, pk=pk)
+
+        if defect.status == DefectReport.Status.DUPLICATE:
+            return Response(
+                {"error": "Defect is already marked as duplicate"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = DefectDuplicateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        duplicate_of_id = serializer.validated_data["duplicate_of"]
+        if pk == duplicate_of_id:
+            return Response(
+                {"error": "A defect cannot be a duplicate of itself"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        duplicate_target = get_object_or_404(DefectReport, pk=duplicate_of_id)
+
+        old_status = defect.status
+        defect.status = DefectReport.Status.DUPLICATE
+        defect.duplicate_of = duplicate_target
+        defect.save()
+
+        send_status_notification(defect, old_status)
+
+        return Response({
+            "id": defect.id,
+            "status": defect.status,
+            "duplicate_of": defect.duplicate_of.id
+        })
+
+class CannotReproduceDefectView(APIView):
+    permission_classes = [IsDeveloper]
+
+    def patch(self, request, pk):
+        defect = get_object_or_404(DefectReport, pk=pk)
+
+        if defect.status not in [DefectReport.Status.OPEN, DefectReport.Status.ASSIGNED]:
+            return Response(
+                {"error": "Only OPEN or ASSIGNED defects can be marked as Cannot Reproduce"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        old_status = defect.status
+        defect.status = DefectReport.Status.CANNOT_REPRODUCE
+        defect.save()
+
+        send_status_notification(defect, old_status)
+
+        return Response({
+            "id": defect.id,
+            "status": defect.status,
         })
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]

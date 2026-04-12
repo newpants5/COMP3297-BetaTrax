@@ -24,6 +24,14 @@ class DefectAssignSerializer(serializers.Serializer):
             raise serializers.ValidationError("Developer not found.")
         return value
 
+class DefectDuplicateSerializer(serializers.Serializer):
+    duplicate_of = serializers.IntegerField()
+
+    def validate_duplicate_of(self, value):
+        if not DefectReport.objects.filter(pk=value).exists():
+            raise serializers.ValidationError("Target duplicate defect not found.")
+        return value
+
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
