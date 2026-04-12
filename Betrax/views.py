@@ -1,6 +1,5 @@
 from django.shortcuts import render
 
-# Create your views here.
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -257,3 +256,13 @@ class LogoutView(APIView):
             {"message": "Successfully logged out."}, 
             status=status.HTTP_200_OK
         )
+class DefectDetailView(generics.RetrieveAPIView):
+    queryset = DefectReport.objects.all()
+    serializer_class = DefectDetailSerializer
+    
+    permission_classes = [IsAuthenticated]
+def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsBetaTester()]
+        
+        return [IsAuthenticated()]
