@@ -4,11 +4,12 @@ from rest_framework.authtoken.views import obtain_auth_token
 from .views import (
     DefectListView, DefectDetailView, AcceptDefectView, AssignDefectView, 
     FixDefectView, ResolveDefectView, 
-    ProductListCreateView, RejectDefectView, ReopenDefectView, ReassignDefectView # <-- Added new views
+    ProductListCreateView, RejectDefectView, ReopenDefectView, ReassignDefectView, LogoutView
 )
 
 urlpatterns = [
     path("login/", obtain_auth_token),
+    path("logout/", LogoutView.as_view()),
     
     path("products/", ProductListCreateView.as_view()),
     

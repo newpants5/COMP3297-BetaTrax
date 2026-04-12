@@ -247,3 +247,13 @@ class ReassignDefectView(APIView):
             "status": defect.status,
             "assigned_developer": defect.assigned_developer.username
         })
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        request.user.auth_token.delete()
+        
+        return Response(
+            {"message": "Successfully logged out."}, 
+            status=status.HTTP_200_OK
+        )
