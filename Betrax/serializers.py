@@ -20,7 +20,7 @@ class DefectAssignSerializer(serializers.Serializer):
     developer_id = serializers.IntegerField()
 
     def validate_developer_id(self, value):
-        if not User.objects.filter(pk=value).exists():
+        if not Developer.objects.filter(pk=value).exists():
             raise serializers.ValidationError("Developer not found.")
         return value
 

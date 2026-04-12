@@ -4,7 +4,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from django.contrib.auth.models import User
 from django.core.mail import send_mail
 
 from .models import DefectReport
@@ -38,9 +37,6 @@ class DefectListView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = DefectReport.objects.all()
-        status_value = self.request.query_params.get("status")
-        if status_value:
-            queryset = queryset.filter(status=status_value)
         status_value = self.request.query_params.get("status")
         if status_value:
             queryset = queryset.filter(status=status_value)
@@ -112,7 +108,7 @@ class AssignDefectView(APIView):
         serializer.is_valid(raise_exception=True)
 
         old_status = defect.status
-        developer = get_object_or_404(User, pk=serializer.validated_data["developer_id"])
+        developer = get_object_or_404(Developer, pk=serializer.validated_data["developer_id"])
         defect.assigned_developer = developer
         defect.status = DefectReport.Status.ASSIGNED
         defect.save()
@@ -122,7 +118,7 @@ class AssignDefectView(APIView):
         return Response({
             "id": defect.id,
             "status": defect.status,
-            "assigned_developer": defect.assigned_developer.username
+            "assigned_developer": defect.assigned_developer.id
         })
 
 
