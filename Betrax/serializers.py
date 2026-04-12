@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import DefectReport
+from .models import DefectReport, Product
 
 class DefectListSerializer(serializers.ModelSerializer):
     class Meta:
@@ -23,3 +23,7 @@ class DefectAssignSerializer(serializers.Serializer):
         if not User.objects.filter(pk=value).exists():
             raise serializers.ValidationError("Developer not found.")
         return value
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = "__all__"

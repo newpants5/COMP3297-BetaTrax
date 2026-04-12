@@ -9,7 +9,15 @@ from django.contrib.auth.models import User
 from django.core.mail import send_mail
 
 from .models import DefectReport
-from .serializers import DefectListSerializer, DefectDetailSerializer, DefectAcceptSerializer, DefectAssignSerializer
+from rest_framework.permissions import IsAuthenticated 
+from .models import DefectReport, Product 
+from .serializers import (
+    DefectListSerializer, 
+    DefectDetailSerializer, 
+    DefectAcceptSerializer, 
+    DefectAssignSerializer,
+    ProductSerializer 
+)
 
 from rest_framework import generics
 from .permissions import IsProductOwner, IsDeveloper, IsBetaTester
@@ -155,4 +163,87 @@ class ResolveDefectView(APIView):
         return Response({
             "id": defect.id,
             "status": defect.status,
+        })
+class ProductListCreateView(generics.ListCreateAPIView):
+    queryset = Product.objects.all()
+    serializer_class = ProductSerializer
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsProductOwner()]
+        return [IsAuthenticated()]
+
+class RejectDefectView(APIView):
+    permission_classes = [IsProductOwner]
+
+    def patch(self, request, pk):
+        defect = get_object_or_404(DefectReport, pk=pk)
+
+        if defect.status != DefectReport.Status.NEW:
+            return Response(
+                {"error": "Only NEW defects can be rejected"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        old_status = defect.status
+        defect.status = DefectReport.Status.REJECTED
+        defect.save()
+
+        send_status_notification(defect, old_status)
+
+        return Response({
+            "id": defect.id,
+            "status": defect.status,
+        })
+
+class ReopenDefectView(APIView):
+    permission_classes = [IsProductOwner]
+
+    def patch(self, request, pk):
+        defect = get_object_or_404(DefectReport, pk=pk)
+
+        if defect.status != DefectReport.Status.RESOLVED:
+            return Response(
+                {"error": "Only RESOLVED defects can be reopened"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        old_status = defect.status
+        defect.status = DefectReport.Status.REOPENED
+        defect.save()
+
+        send_status_notification(defect, old_status)
+
+        return Response({
+            "id": defect.id,
+            "status": defect.status,
+        })
+
+class ReassignDefectView(APIView):
+    permission_classes = [IsProductOwner]
+
+    def patch(self, request, pk):
+        defect = get_object_or_404(DefectReport, pk=pk)
+
+        if defect.status not in [DefectReport.Status.OPEN, DefectReport.Status.ASSIGNED]:
+            return Response(
+                {"error": "Only OPEN or ASSIGNED defects can be reassigned"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer = DefectAssignSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        old_status = defect.status
+        developer = get_object_or_404(User, pk=serializer.validated_data["developer_id"])
+        defect.assigned_developer = developer
+        defect.status = DefectReport.Status.ASSIGNED
+        defect.save()
+
+        send_status_notification(defect, old_status)
+
+        return Response({
+            "id": defect.id,
+            "status": defect.status,
+            "assigned_developer": defect.assigned_developer.username
         })
