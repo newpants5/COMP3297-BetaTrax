@@ -34,7 +34,7 @@ class ProductOwner(EmployeeRole):
 
 
 class Product(models.Model):
-    productId = models.CharField(max_length=10)
+    productId = models.CharField(max_length=10, unique=True)
     name = models.CharField(max_length=200)
     owner = models.ForeignKey(
         ProductOwner,
