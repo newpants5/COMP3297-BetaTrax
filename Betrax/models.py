@@ -3,7 +3,7 @@ from django.core.exceptions import ValidationError
 
 
 class Employee(models.Model):
-    employee_id = models.CharField(max_length=50)
+    employee_id = models.CharField(max_length=10, unique=True)
     name = models.CharField(max_length=200)
     email = models.EmailField()
 
@@ -21,7 +21,8 @@ class EmployeeRole(models.Model):
     )
 
     def __str__(self):
-        return f"{self.__class__.__name__}: {self.employee.name}"
+        name = self.employee.name if self.employee else "No Employee"
+        return f"{self.__class__.__name__}: {name}"
 
 
 class Developer(EmployeeRole):
@@ -118,9 +119,7 @@ class DefectReport(models.Model):
     
 class Comment(models.Model):
     defect = models.ForeignKey(
-        DefectReport, on_delete=models.CASCADE, related_name='comments',
-        null=True, 
-        blank=True
+        DefectReport, on_delete=models.CASCADE, related_name='comments'
     )
     author = models.ForeignKey(
         EmployeeRole,
