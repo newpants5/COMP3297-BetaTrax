@@ -77,11 +77,11 @@ class DefectReport(models.Model):
         on_delete=models.CASCADE,
         related_name='defect_reports',
     )
-    product_version = models.CharField(max_length=50)
+    product_version = models.CharField(max_length=10)
     title = models.CharField(max_length=200)
     description = models.TextField()
     steps_to_reproduce = models.TextField()
-    tester_id = models.CharField(max_length=50)
+    tester_id = models.CharField(max_length=10)
     tester_email = models.EmailField(blank=True)
     submission_date = models.DateTimeField(auto_now_add=True)
     status = models.CharField(

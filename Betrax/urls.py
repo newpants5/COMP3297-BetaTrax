@@ -5,7 +5,6 @@ from .views import (
     DefectListView, DefectDetailView, AcceptDefectView, AssignDefectView, 
     FixDefectView, ResolveDefectView, 
     ProductListCreateView, RejectDefectView, ReopenDefectView, ReassignDefectView, LogoutView,
-    ProductCreateView
 )
 
 urlpatterns = [
