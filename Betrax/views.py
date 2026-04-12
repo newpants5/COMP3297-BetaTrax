@@ -1,24 +1,20 @@
-from django.shortcuts import render
-
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, generics
 from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
+from rest_framework.permissions import IsAuthenticated
 
-from .models import DefectReport
-from rest_framework.permissions import IsAuthenticated 
 from .models import DefectReport, Product, Developer
 from .serializers import (
-    DefectListSerializer, 
-    DefectDetailSerializer, 
-    DefectAcceptSerializer, 
+    DefectListSerializer,
+    DefectDetailSerializer,
+    DefectAcceptSerializer,
     DefectAssignSerializer,
-    ProductSerializer 
+    ProductSerializer,
 )
-
-from rest_framework import generics
 from .permissions import IsProductOwner, IsDeveloper, IsBetaTester
+
 
 def send_status_notification(defect, old_status):
     if not defect.tester_email:
@@ -27,39 +23,45 @@ def send_status_notification(defect, old_status):
     subject = f"BetaTrax: Defect #{defect.id} status changed to {defect.status}"
     body = (
         f"Hello,\n\n"
-        f"The status of defect \"{defect.title}\" (ID: {defect.id}) "
+        f'The status of defect "{defect.title}" (ID: {defect.id}) '
         f"has changed from {old_status} to {defect.status}.\n\n"
         f"— BetaTrax"
     )
     send_mail(subject, body, None, [defect.tester_email])
 
+
 class DefectListView(generics.ListCreateAPIView):
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = DefectReport.objects.all()
+
         status_value = self.request.query_params.get("status")
         if status_value:
             queryset = queryset.filter(status=status_value)
-            
+
         product_id = self.request.query_params.get("product")
         if product_id:
             queryset = queryset.filter(product_id=product_id)
-            
+
         return queryset
 
     def get_serializer_class(self):
-        if self.request.method == 'POST':
+        if self.request.method == "POST":
             return DefectDetailSerializer
         return DefectListSerializer
 
     def get_permissions(self):
-        if self.request.method == 'POST':
+        if self.request.method == "POST":
             return [IsBetaTester()]
-        return super().get_permissions()
-    
+        return [IsAuthenticated()]
+
+
 class DefectDetailView(generics.RetrieveAPIView):
     queryset = DefectReport.objects.all()
     serializer_class = DefectDetailSerializer
+    permission_classes = [IsAuthenticated]
+
 
 class AcceptDefectView(APIView):
     permission_classes = [IsProductOwner]
@@ -70,7 +72,7 @@ class AcceptDefectView(APIView):
         if defect.status != DefectReport.Status.NEW:
             return Response(
                 {"error": "Only NEW defects can be accepted"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         serializer = DefectAcceptSerializer(data=request.data)
@@ -84,12 +86,14 @@ class AcceptDefectView(APIView):
 
         send_status_notification(defect, old_status)
 
-        return Response({
-            "id": defect.id,
-            "status": defect.status,
-            "severity": defect.severity,
-            "priority": defect.priority
-        })
+        return Response(
+            {
+                "id": defect.id,
+                "status": defect.status,
+                "severity": defect.severity,
+                "priority": defect.priority,
+            }
+        )
 
 
 class AssignDefectView(APIView):
@@ -101,25 +105,29 @@ class AssignDefectView(APIView):
         if defect.status != DefectReport.Status.OPEN:
             return Response(
                 {"error": "Only OPEN defects can be assigned"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         serializer = DefectAssignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         old_status = defect.status
-        developer = get_object_or_404(Developer, pk=serializer.validated_data["developer_id"])
+        developer = get_object_or_404(
+            Developer, pk=serializer.validated_data["developer_id"]
+        )
         defect.assigned_developer = developer
         defect.status = DefectReport.Status.ASSIGNED
         defect.save()
 
         send_status_notification(defect, old_status)
 
-        return Response({
-            "id": defect.id,
-            "status": defect.status,
-            "assigned_developer": defect.assigned_developer.id
-        })
+        return Response(
+            {
+                "id": defect.id,
+                "status": defect.status,
+                "assigned_developer": defect.assigned_developer.id,
+            }
+        )
 
 
 class FixDefectView(APIView):
@@ -131,7 +139,7 @@ class FixDefectView(APIView):
         if defect.status != DefectReport.Status.ASSIGNED:
             return Response(
                 {"error": "Only ASSIGNED defects can be marked as Fixed"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         old_status = defect.status
@@ -140,10 +148,8 @@ class FixDefectView(APIView):
 
         send_status_notification(defect, old_status)
 
-        return Response({
-            "id": defect.id,
-            "status": defect.status
-        })
+        return Response({"id": defect.id, "status": defect.status})
+
 
 class ResolveDefectView(APIView):
     permission_classes = [IsProductOwner]
@@ -154,7 +160,7 @@ class ResolveDefectView(APIView):
         if defect.status != DefectReport.Status.FIXED:
             return Response(
                 {"error": "Only FIXED defects can be marked as Resolved"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         old_status = defect.status
@@ -163,18 +169,18 @@ class ResolveDefectView(APIView):
 
         send_status_notification(defect, old_status)
 
-        return Response({
-            "id": defect.id,
-            "status": defect.status,
-        })
+        return Response({"id": defect.id, "status": defect.status})
+
+
 class ProductListCreateView(generics.ListCreateAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductSerializer
 
     def get_permissions(self):
-        if self.request.method == 'POST':
+        if self.request.method == "POST":
             return [IsProductOwner()]
         return [IsAuthenticated()]
+
 
 class RejectDefectView(APIView):
     permission_classes = [IsProductOwner]
@@ -185,7 +191,7 @@ class RejectDefectView(APIView):
         if defect.status != DefectReport.Status.NEW:
             return Response(
                 {"error": "Only NEW defects can be rejected"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         old_status = defect.status
@@ -194,10 +200,8 @@ class RejectDefectView(APIView):
 
         send_status_notification(defect, old_status)
 
-        return Response({
-            "id": defect.id,
-            "status": defect.status,
-        })
+        return Response({"id": defect.id, "status": defect.status})
+
 
 class ReopenDefectView(APIView):
     permission_classes = [IsProductOwner]
@@ -208,7 +212,7 @@ class ReopenDefectView(APIView):
         if defect.status != DefectReport.Status.RESOLVED:
             return Response(
                 {"error": "Only RESOLVED defects can be reopened"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         old_status = defect.status
@@ -217,10 +221,8 @@ class ReopenDefectView(APIView):
 
         send_status_notification(defect, old_status)
 
-        return Response({
-            "id": defect.id,
-            "status": defect.status,
-        })
+        return Response({"id": defect.id, "status": defect.status})
+
 
 class ReassignDefectView(APIView):
     permission_classes = [IsProductOwner]
@@ -231,42 +233,38 @@ class ReassignDefectView(APIView):
         if defect.status not in [DefectReport.Status.OPEN, DefectReport.Status.ASSIGNED]:
             return Response(
                 {"error": "Only OPEN or ASSIGNED defects can be reassigned"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         serializer = DefectAssignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         old_status = defect.status
-        developer = get_object_or_404(User, pk=serializer.validated_data["developer_id"])
+        developer = get_object_or_404(
+            Developer, pk=serializer.validated_data["developer_id"]
+        )
+
         defect.assigned_developer = developer
         defect.status = DefectReport.Status.ASSIGNED
         defect.save()
 
         send_status_notification(defect, old_status)
 
-        return Response({
-            "id": defect.id,
-            "status": defect.status,
-            "assigned_developer": defect.assigned_developer.username
-        })
+        return Response(
+            {
+                "id": defect.id,
+                "status": defect.status,
+                "assigned_developer": defect.assigned_developer.id,
+            }
+        )
+
+
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         request.user.auth_token.delete()
-        
         return Response(
-            {"message": "Successfully logged out."}, 
-            status=status.HTTP_200_OK
+            {"message": "Successfully logged out."},
+            status=status.HTTP_200_OK,
         )
-class DefectDetailView(generics.RetrieveAPIView):
-    queryset = DefectReport.objects.all()
-    serializer_class = DefectDetailSerializer
-    
-    permission_classes = [IsAuthenticated]
-def get_permissions(self):
-        if self.request.method == 'POST':
-            return [IsBetaTester()]
-        
-        return [IsAuthenticated()]
