@@ -14,6 +14,8 @@ class Employee(models.Model):
 class EmployeeRole(models.Model):
     employee = models.ForeignKey(
         Employee,
+        null=True,  
+        blank=True,
         on_delete=models.CASCADE,
         related_name='roles',
     )
@@ -116,10 +118,14 @@ class DefectReport(models.Model):
     
 class Comment(models.Model):
     defect = models.ForeignKey(
-        DefectReport, on_delete=models.CASCADE, related_name='comments'
+        DefectReport, on_delete=models.CASCADE, related_name='comments',
+        null=True, 
+        blank=True
     )
     author = models.ForeignKey(
-        EmployeeRole, on_delete=models.CASCADE, related_name='comments'
+        EmployeeRole,
+        null=True, blank=True,
+        on_delete=models.CASCADE, related_name='comments'
     )
     text = models.TextField()
     creation_date = models.DateTimeField(auto_now_add=True)
