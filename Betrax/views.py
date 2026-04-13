@@ -25,8 +25,8 @@ def send_status_notification(defect, old_status):
     body = (
         f"Hello,\n\n"
         f'The status of defect "{defect.title}" (ID: {defect.id}) '
-        f"has changed from {old_status} to {defect.status}.\n\n"
-        f"— BetaTrax"
+        f"has changed\nfrom {old_status} to {defect.status}.\n\n"
+        f"BetaTrax"
     )
     send_mail(subject, body, None, [defect.tester_email])
 
@@ -286,3 +286,58 @@ class CommentRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [IsProductOwnerOrDeveloper]
+
+class MarkDuplicateView(APIView):
+    permission_classes = [IsProductOwner]
+
+    def patch(self, request, pk):
+        defect = get_object_or_404(DefectReport, pk=pk)
+        
+        parent_id = request.data.get('duplicate_of')
+
+        if defect.status != DefectReport.Status.NEW:
+            return Response(
+                {"error": "Only NEW defects can be marked as duplicates"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+            
+        if not parent_id:
+            return Response(
+                {"error": "The ID of the parent defect (duplicate_of) is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        parent_defect = get_object_or_404(DefectReport, pk=parent_id)
+
+        old_status = defect.status
+        defect.duplicate_of = parent_defect
+        defect.status = DefectReport.Status.DUPLICATE
+        defect.save()
+
+        send_status_notification(defect, old_status)
+
+        return Response({
+            "id": defect.id, 
+            "status": defect.status, 
+            "duplicate_of": parent_defect.id
+        })
+    
+class CannotReproduceView(APIView):
+    permission_classes = [IsDeveloper]
+
+    def patch(self, request, pk):
+        defect = get_object_or_404(DefectReport, pk=pk)
+
+        if defect.status != DefectReport.Status.ASSIGNED:
+            return Response(
+                {"error": "Only ASSIGNED defects can be marked as Cannot Reproduce"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        old_status = defect.status
+        defect.status = DefectReport.Status.CANNOT_REPRODUCE
+        defect.save()
+
+        send_status_notification(defect, old_status)
+
+        return Response({"id": defect.id, "status": defect.status})

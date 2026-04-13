@@ -6,7 +6,7 @@ from .views import (
     FixDefectView, ResolveDefectView, 
     ProductListCreateView, RejectDefectView, ReopenDefectView, 
     ReassignDefectView, LogoutView, DefectCommentListCreateView,
-    CommentRetrieveUpdateDestroyView,
+    CommentRetrieveUpdateDestroyView, MarkDuplicateView, CannotReproduceView
 )
 
 urlpatterns = [
@@ -27,4 +27,6 @@ urlpatterns = [
     path("defects/<int:pk>/reassign/", ReassignDefectView.as_view()),
     path("defects/<int:pk>/comments/", DefectCommentListCreateView.as_view()),
     path("comments/<int:pk>/", CommentRetrieveUpdateDestroyView.as_view()),
+    path("defects/<int:pk>/mark-duplicate/", MarkDuplicateView.as_view()),
+    path("defects/<int:pk>/cannot-reproduce/", CannotReproduceView.as_view()),
 ]
