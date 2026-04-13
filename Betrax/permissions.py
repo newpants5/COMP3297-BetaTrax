@@ -11,3 +11,12 @@ class IsDeveloper(BasePermission):
 class IsBetaTester(BasePermission):
     def has_permission(self, request, view):
         return request.user and request.user.groups.filter(name='Beta Tester').exists()
+
+class IsProductOwnerOrDeveloper(BasePermission):
+    def has_permission(self, request, view):
+        return (
+            request.user.is_authenticated and (
+                request.user.groups.filter(name='Product Owner').exists()
+                or request.user.groups.filter(name='Developer').exists()
+            )
+        )

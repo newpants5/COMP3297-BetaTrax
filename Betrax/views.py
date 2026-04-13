@@ -5,15 +5,16 @@ from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from rest_framework.permissions import IsAuthenticated
 
-from .models import DefectReport, Product, Developer
+from .models import DefectReport, Product, Developer, Comment
 from .serializers import (
     DefectListSerializer,
     DefectDetailSerializer,
     DefectAcceptSerializer,
     DefectAssignSerializer,
     ProductSerializer,
+    CommentSerializer,
 )
-from .permissions import IsProductOwner, IsDeveloper, IsBetaTester
+from .permissions import IsProductOwner, IsDeveloper, IsBetaTester, IsProductOwnerOrDeveloper
 
 
 def send_status_notification(defect, old_status):
@@ -268,3 +269,20 @@ class LogoutView(APIView):
             {"message": "Successfully logged out."},
             status=status.HTTP_200_OK,
         )
+    
+class DefectCommentListCreateView(generics.ListCreateAPIView):
+    serializer_class = CommentSerializer
+    permission_classes = [IsProductOwnerOrDeveloper]
+
+    def get_queryset(self):
+        defect = get_object_or_404(DefectReport, pk=self.kwargs["pk"])
+        return Comment.objects.filter(defect=defect).order_by("creation_date")
+
+    def perform_create(self, serializer):
+        defect = get_object_or_404(DefectReport, pk=self.kwargs["pk"])
+        serializer.save(defect=defect)
+
+class CommentRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [IsProductOwnerOrDeveloper]
