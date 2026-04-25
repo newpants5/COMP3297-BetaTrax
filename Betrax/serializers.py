@@ -40,3 +40,12 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = ["id", "productId", "name", "owner"]
 
+
+class DeveloperEffectivenessSerializer(serializers.Serializer):
+    developer_id = serializers.IntegerField()
+    developer_name = serializers.CharField()
+    fixed_count = serializers.IntegerField()
+    reopened_count = serializers.IntegerField()
+    ratio = serializers.FloatField(allow_null=True)
+    classification = serializers.CharField()
+    classification_label = serializers.CharField()

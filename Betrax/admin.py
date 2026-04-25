@@ -1,7 +1,16 @@
 from django.contrib import admin
 
 # Register your models here.
-from .models import Product, DefectReport, Comment, EmailMessage, Employee, ProductOwner, Developer
+from .models import (
+    Product,
+    DefectReport,
+    Comment,
+    EmailMessage,
+    Employee,
+    ProductOwner,
+    Developer,
+    DeveloperMetricEvent,
+)
 
 class DefectReportAdmin(admin.ModelAdmin):
     list_display = ('id', 'title', 'status', 'severity', 'priority', 'tester_id', 'submission_date', 'assigned_developer')
@@ -14,3 +23,4 @@ admin.site.register(EmailMessage)
 admin.site.register(Employee)
 admin.site.register(ProductOwner)
 admin.site.register(Developer)
+admin.site.register(DeveloperMetricEvent)

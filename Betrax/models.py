@@ -26,7 +26,39 @@ class EmployeeRole(models.Model):
 
 
 class Developer(EmployeeRole):
-    pass
+    class Effectiveness(models.TextChoices):
+        INSUFFICIENT_DATA = 'INSUFFICIENT_DATA', 'Insufficient data'
+        GOOD = 'GOOD', 'Good'
+        FAIR = 'FAIR', 'Fair'
+        POOR = 'POOR', 'Poor'
+
+    def effectiveness_summary(self):
+        fixed_count = self.metric_events.filter(
+            event_type=DeveloperMetricEvent.EventType.FIXED
+        ).count()
+        reopened_count = self.metric_events.filter(
+            event_type=DeveloperMetricEvent.EventType.REOPENED
+        ).count()
+
+        if fixed_count < 20:
+            classification = self.Effectiveness.INSUFFICIENT_DATA
+            ratio = None
+        else:
+            ratio = reopened_count / fixed_count
+            if ratio < 1 / 32:
+                classification = self.Effectiveness.GOOD
+            elif ratio < 1 / 8:
+                classification = self.Effectiveness.FAIR
+            else:
+                classification = self.Effectiveness.POOR
+
+        return {
+            "fixed_count": fixed_count,
+            "reopened_count": reopened_count,
+            "ratio": ratio,
+            "classification": classification,
+            "classification_label": self.Effectiveness(classification).label,
+        }
 
 
 class ProductOwner(EmployeeRole):
@@ -147,3 +179,25 @@ class EmailMessage(models.Model):
 
     def __str__(self):
         return self.subject
+
+
+class DeveloperMetricEvent(models.Model):
+    class EventType(models.TextChoices):
+        FIXED = 'FIXED', 'Fixed'
+        REOPENED = 'REOPENED', 'Reopened'
+
+    developer = models.ForeignKey(
+        Developer,
+        on_delete=models.CASCADE,
+        related_name='metric_events',
+    )
+    defect = models.ForeignKey(
+        DefectReport,
+        on_delete=models.CASCADE,
+        related_name='metric_events',
+    )
+    event_type = models.CharField(max_length=20, choices=EventType.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.developer} {self.event_type} defect {self.defect_id}"

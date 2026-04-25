@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from rest_framework.permissions import IsAuthenticated
 
-from .models import DefectReport, Product, Developer, Comment
+from .models import DefectReport, Product, Developer, Comment, DeveloperMetricEvent
 from .serializers import (
     DefectListSerializer,
     DefectDetailSerializer,
@@ -13,6 +13,7 @@ from .serializers import (
     DefectAssignSerializer,
     ProductSerializer,
     CommentSerializer,
+    DeveloperEffectivenessSerializer,
 )
 from .permissions import IsProductOwner, IsDeveloper, IsBetaTester, IsProductOwnerOrDeveloper
 
@@ -29,6 +30,18 @@ def send_status_notification(defect, old_status):
         f"BetaTrax"
     )
     send_mail(subject, body, None, [defect.tester_email])
+
+
+def record_metric_event(defect, event_type):
+    developer = defect.assigned_developer
+    if developer is None:
+        return
+
+    DeveloperMetricEvent.objects.create(
+        developer=developer,
+        defect=defect,
+        event_type=event_type,
+    )
 
 
 class DefectListView(generics.ListCreateAPIView):
@@ -146,6 +159,7 @@ class FixDefectView(APIView):
         old_status = defect.status
         defect.status = DefectReport.Status.FIXED
         defect.save()
+        record_metric_event(defect, DeveloperMetricEvent.EventType.FIXED)
 
         send_status_notification(defect, old_status)
 
@@ -219,6 +233,7 @@ class ReopenDefectView(APIView):
         old_status = defect.status
         defect.status = DefectReport.Status.REOPENED
         defect.save()
+        record_metric_event(defect, DeveloperMetricEvent.EventType.REOPENED)
 
         send_status_notification(defect, old_status)
 
@@ -341,3 +356,20 @@ class CannotReproduceView(APIView):
         send_status_notification(defect, old_status)
 
         return Response({"id": defect.id, "status": defect.status})
+
+
+class DeveloperEffectivenessView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        developer = get_object_or_404(Developer, pk=pk)
+        summary = developer.effectiveness_summary()
+
+        serializer = DeveloperEffectivenessSerializer(
+            {
+                "developer_id": developer.pk,
+                "developer_name": str(developer),
+                **summary,
+            }
+        )
+        return Response(serializer.data)
