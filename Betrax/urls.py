@@ -2,12 +2,12 @@ from django.urls import path
 from rest_framework.authtoken.views import obtain_auth_token
 
 from .views import (
-    DefectListView, DefectDetailView, AcceptDefectView, AssignDefectView, 
-    FixDefectView, ResolveDefectView, 
-    ProductListCreateView, RejectDefectView, ReopenDefectView, 
+    DefectListView, DefectDetailView, AcceptDefectView, AssignDefectView,
+    FixDefectView, ResolveDefectView,
+    ProductListCreateView, RejectDefectView, ReopenDefectView,
     ReassignDefectView, LogoutView, DefectCommentListCreateView,
     CommentRetrieveUpdateDestroyView, MarkDuplicateView, CannotReproduceView,
-    DeveloperEffectivenessView
+    DeveloperEffectivenessView, DeveloperListView
 )
 
 urlpatterns = [
@@ -15,6 +15,7 @@ urlpatterns = [
     path("logout/", LogoutView.as_view()),
     
     path("products/", ProductListCreateView.as_view()),
+    path("developers/", DeveloperListView.as_view()),
     path("developers/<int:pk>/effectiveness/", DeveloperEffectivenessView.as_view()),
     
     path("defects/", DefectListView.as_view()),

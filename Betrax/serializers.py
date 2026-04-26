@@ -1,6 +1,14 @@
 from rest_framework import serializers
 from .models import DefectReport, Product, Developer, Comment
 
+class DeveloperListSerializer(serializers.ModelSerializer):
+    employee_id = serializers.CharField(source='employee.employee_id', read_only=True)
+    name = serializers.CharField(source='employee.name', read_only=True)
+
+    class Meta:
+        model = Developer
+        fields = ['id', 'employee_id', 'name']
+
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment

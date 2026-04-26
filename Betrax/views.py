@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from rest_framework.permissions import IsAuthenticated
 
-from .models import DefectReport, Product, Developer, Comment, DeveloperMetricEvent
+from .models import DefectReport, Product, Developer, Employee, Comment, DeveloperMetricEvent
 from .serializers import (
     DefectListSerializer,
     DefectDetailSerializer,
@@ -14,14 +14,15 @@ from .serializers import (
     ProductSerializer,
     CommentSerializer,
     DeveloperEffectivenessSerializer,
+    DeveloperListSerializer,
 )
 from .permissions import IsProductOwner, IsDeveloper, IsBetaTester, IsProductOwnerOrDeveloper
 
 
-def send_status_notification(defect, old_status):
+def _notify_tester(defect, old_status):
+    """Send a single status-change email to one defect's tester."""
     if not defect.tester_email:
         return
-
     subject = f"BetaTrax: Defect #{defect.id} status changed to {defect.status}"
     body = (
         f"Hello,\n\n"
@@ -30,6 +31,32 @@ def send_status_notification(defect, old_status):
         f"BetaTrax"
     )
     send_mail(subject, body, None, [defect.tester_email])
+
+
+def send_status_notification(defect, old_status):
+    """Notify the defect's tester and, if the defect is a parent, all
+    duplicate-chain dependents whose testers supplied an email address."""
+    _notify_tester(defect, old_status)
+
+    # Walk the tree of duplicates that ultimately resolve to this defect
+    # and notify each dependent tester about the parent's status change.
+    to_visit = list(defect.duplicates.all())
+    while to_visit:
+        child = to_visit.pop()
+        if child.tester_email:
+            subject = (
+                f"BetaTrax: Defect #{child.id} (duplicate) — "
+                f"parent defect #{defect.id} status changed to {defect.status}"
+            )
+            body = (
+                f"Hello,\n\n"
+                f'Your reported defect "{child.title}" (ID: {child.id}) is marked '
+                f"as a duplicate of defect #{defect.id}.\n"
+                f"Its parent status has changed from {old_status} to {defect.status}.\n\n"
+                f"BetaTrax"
+            )
+            send_mail(subject, body, None, [child.tester_email])
+        to_visit.extend(list(child.duplicates.all()))
 
 
 def record_metric_event(defect, event_type):
@@ -111,24 +138,35 @@ class AcceptDefectView(APIView):
 
 
 class AssignDefectView(APIView):
-    permission_classes = [IsProductOwner]
+    permission_classes = [IsProductOwnerOrDeveloper]
 
     def patch(self, request, pk):
         defect = get_object_or_404(DefectReport, pk=pk)
 
-        if defect.status != DefectReport.Status.OPEN:
+        if defect.status not in [DefectReport.Status.OPEN, DefectReport.Status.REOPENED]:
             return Response(
-                {"error": "Only OPEN defects can be assigned"},
+                {"error": "Only OPEN or REOPENED defects can be assigned"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         serializer = DefectAssignSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        old_status = defect.status
         developer = get_object_or_404(
             Developer, pk=serializer.validated_data["developer_id"]
         )
+
+        # Developers may only assign the defect to themselves.
+        if request.user.groups.filter(name='Developer').exists():
+            if not Developer.objects.filter(
+                pk=developer.pk, employee__email=request.user.email
+            ).exists():
+                return Response(
+                    {"error": "Developers can only assign defects to themselves"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+        old_status = defect.status
         defect.assigned_developer = developer
         defect.status = DefectReport.Status.ASSIGNED
         defect.save()
@@ -224,9 +262,9 @@ class ReopenDefectView(APIView):
     def patch(self, request, pk):
         defect = get_object_or_404(DefectReport, pk=pk)
 
-        if defect.status != DefectReport.Status.RESOLVED:
+        if defect.status != DefectReport.Status.FIXED:
             return Response(
-                {"error": "Only RESOLVED defects can be reopened"},
+                {"error": "Only FIXED defects can be reopened"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -264,7 +302,8 @@ class ReassignDefectView(APIView):
         defect.status = DefectReport.Status.ASSIGNED
         defect.save()
 
-        send_status_notification(defect, old_status)
+        if old_status != defect.status:
+            send_status_notification(defect, old_status)
 
         return Response(
             {
@@ -356,6 +395,12 @@ class CannotReproduceView(APIView):
         send_status_notification(defect, old_status)
 
         return Response({"id": defect.id, "status": defect.status})
+
+
+class DeveloperListView(generics.ListAPIView):
+    queryset = Developer.objects.select_related('employee').all()
+    serializer_class = DeveloperListSerializer
+    permission_classes = [IsAuthenticated]
 
 
 class DeveloperEffectivenessView(APIView):
