@@ -13,7 +13,7 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ["id", "defect", "author", "text", "creation_date"]
-        read_only_fields = ["id", "creation_date", "defect"]
+        read_only_fields = ["id", "creation_date", "defect", "author"]
         
 class DefectListSerializer(serializers.ModelSerializer):
     class Meta:

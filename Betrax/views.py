@@ -5,7 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.core.mail import send_mail
 from rest_framework.permissions import IsAuthenticated
 
-from .models import DefectReport, Product, Developer, Employee, Comment, DeveloperMetricEvent
+from .models import DefectReport, Product, Developer, Employee, EmployeeRole, Comment, DeveloperMetricEvent
 from .serializers import (
     DefectListSerializer,
     DefectDetailSerializer,
@@ -194,6 +194,15 @@ class FixDefectView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        if not Developer.objects.filter(
+            pk=defect.assigned_developer.pk,
+            employee__email=request.user.email
+        ).exists():
+            return Response(
+                {"error": "Only the assigned developer can mark this defect as fixed"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         old_status = defect.status
         defect.status = DefectReport.Status.FIXED
         defect.save()
@@ -334,7 +343,10 @@ class DefectCommentListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         defect = get_object_or_404(DefectReport, pk=self.kwargs["pk"])
-        serializer.save(defect=defect)
+        author = EmployeeRole.objects.filter(
+            employee__email=self.request.user.email
+        ).first()
+        serializer.save(defect=defect, author=author)
 
 class CommentRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Comment.objects.all()
