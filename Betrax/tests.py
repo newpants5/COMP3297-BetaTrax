@@ -246,8 +246,6 @@ class DefectEndpointTests(BetaTraxAPITestCase):
 		self.assertEqual(defect.assigned_developer_id, self.developer_role.id)
 
 	def test_developer_can_self_assign_open_defect(self):
-		# Link the developer user's email to the employee record so the
-		# self-assign check can match request.user to a Developer row.
 		self.developer_user.email = self.developer_role.employee.email
 		self.developer_user.save()
 		defect = self.create_defect(product=self.product, status=DefectReport.Status.OPEN)
@@ -281,6 +279,8 @@ class DefectEndpointTests(BetaTraxAPITestCase):
 		self.assertIsNone(defect.assigned_developer)
 
 	def test_fix_defect_marks_assigned_defect_as_fixed(self):
+		self.developer_user.email = self.developer_role.employee.email
+		self.developer_user.save()
 		defect = self.create_defect(
 			product=self.product,
 			status=DefectReport.Status.ASSIGNED,
